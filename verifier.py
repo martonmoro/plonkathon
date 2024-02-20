@@ -74,22 +74,102 @@ class VerificationKey:
     # Basic, easier-to-understand version of what's going on
     def verify_proof_unoptimized(self, group_order: int, pf, public=[]) -> bool:
         # 4. Compute challenges
-
+        (beta, gamma, alpha, zeta, v, u) = self.compute_challenges(pf)
         # 5. Compute zero polynomial evaluation Z_H(ζ) = ζ^n - 1
-
+        Z_H_eval = zeta ** group_order - 1
         # 6. Compute Lagrange polynomial evaluation L_0(ζ)
-
+        L0_eval = Polynomial([Scalar(1)] + [Scalar(0)] * (group_order - 1), Basis.LAGRANGE).barycentric_eval(self.zeta)
         # 7. Compute public input polynomial evaluation PI(ζ).
-
+        PI = Polynomial(
+            [Scalar(x) for x in public]
+            + [Scalar(0) for _ in range(group_order - len(public))],
+            Basis.LAGRANGE,
+        )
+        PI_ev = PI.barycentric_eval(zeta)
         # Recover the commitment to the linearization polynomial R,
         # exactly the same as what was created by the prover
+        
+        R_pt = ec_lincomb(
+            [
+                (self.Qm, proof["a_eval"] * proof["b_eval"]),
+                (self.Ql, proof["a_eval"]),
+                (self.Qr, proof["b_eval"]),
+                (self.Qo, proof["c_eval"]),
+                (b.G1, PI_ev),
+                (self.Qc, 1),
+                (
+                    proof["z_1"],
+                    (
+                        (proof["a_eval"] + beta * zeta + gamma)
+                        * (proof["b_eval"] + beta * 2 * zeta + gamma)
+                        * (proof["c_eval"] + beta * 3 * zeta + gamma)
+                        * alpha
+                    ),
+                ),
+                (
+                    self.S3,
+                    (
+                        -(proof["a_eval"] + beta * proof["s1_eval"] + gamma)
+                        * (proof["b_eval"] + beta * proof["s2_eval"] + gamma)
+                        * beta
+                        * alpha
+                        * proof["z_shifted_eval"]
+                    ),
+                ),
+                (
+                    b.G1,
+                    (
+                        -(proof["a_eval"] + beta * proof["s1_eval"] + gamma)
+                        * (proof["b_eval"] + beta * proof["s2_eval"] + gamma)
+                        * (proof["c_eval"] + gamma)
+                        * alpha
+                        * proof["z_shifted_eval"]
+                    ),
+                ),
+                (proof["z_1"], L0_eval * alpha**2),
+                (b.G1, -L0_eval * alpha**2),
+                (proof["t_lo_1"], -ZH_ev),
+                (proof["t_mid_1"], -ZH_ev * zeta**group_order),
+                (proof["t_hi_1"], -ZH_ev * zeta ** (group_order * 2)),
+            ]
+        ) 
+        
+        print("verifier R_pt", R_pt)
 
         # Verify that R(z) = 0 and the prover-provided evaluations
         # A(z), B(z), C(z), S1(z), S2(z) are all correct
+        
+        # Here we basically do e(...)
+        assert b.pairing(
+            b.G2,
+            ec_lincomb(
+                [
+                    (R_pt, 1),
+                    (proof["a_1"], v),
+                    (b.G1, -v * proof["a_eval"]),
+                    (proof["b_1"], v**2),
+                    (b.G1, -(v**2) * proof["b_eval"]),
+                    (proof["c_1"], v**3),
+                    (b.G1, -(v**3) * proof["c_eval"]),
+                    (self.S1, v**4),
+                    (b.G1, -(v**4) * proof["s1_eval"]),
+                    (self.S2, v**5),
+                    (b.G1, -(v**5) * proof["s2_eval"]),
+                ]
+            ),
+        ) == b.pairing(b.add(self.X_2, ec_mul(b.G2, -zeta)), proof["W_z_1"])
+        print("done check 1")
 
         # Verify that the provided value of Z(zeta*w) is correct
 
-        return False
+        assert b.pairing(
+            b.G2, ec_lincomb([(proof["z_1"], 1), (b.G1, -proof["z_shifted_eval"])])
+        ) == b.pairing(
+            b.add(self.X_2, ec_mul(b.G2, -zeta * root_of_unity)), proof["W_zw_1"]
+        )
+        print("done check 2")
+        
+        return True
 
     # Compute challenges (should be same as those computed by prover)
     def compute_challenges(
