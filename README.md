@@ -3,12 +3,12 @@
 
 ### Extensions
 1. Add support for custom gates.
-[TurboPlonK](https://docs.zkproof.org/pages/standards/accepted-workshop3/proposal-turbo_plonk.pdf) introduced support for custom constraints, beyond the addition and multiplication gates supported here. Try to generalise this implementation to allow circuit writers to define custom constraints.
-2. Add zero-knowledge.
-The parts of PlonK that are responsible for ensuring strong privacy are left out of this implementation. See if you can identify them in the [original paper](https://eprint.iacr.org/2019/953.pdf) and add them here.
-3. Add support for lookups.
+[TurboPlonK](https://docs.zkproof.org/pages/standards/accepted-workshop3/proposal-turbo_plonk.pdf) introduced support for custom constraints, beyond the addition and multiplication gates supported here. 
+1. Add zero-knowledge.
+The parts of PlonK that are responsible for ensuring strong privacy are left out of this implementation.
+1. Add support for lookups.
 A lookup argument allows us to prove that a certain element can be found in a public lookup table. [PlonKup](https://eprint.iacr.org/2022/086.pdf) introduces lookup arguments to PlonK. Try to understand the construction in the paper and implement it here.
-4. Implement Merlin transcript.
+1. Implement Merlin transcript.
 Currently, this implementation uses the [merlin transcript package](https://github.com/nalinbhardwaj/curdleproofs.pie/tree/master/merlin). Learn about the [Merlin transcript construction](https://merlin.cool) and the [STROBE framework](https://www.cryptologie.net/article/416/the-strobe-protocol-framework/) which Merlin is based upon, and then implement the transcript class `MerlinTranscript` yourself!
 
 ## Getting started
